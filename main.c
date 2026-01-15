@@ -14,7 +14,10 @@ struct babyGPU {
     uint32_t *vram;
     struct Instruction *code_memory;
 
-    uint32_t r0;             // A generic register
+    uint32_t r0[32];             // Register to hold color
+    uint32_t r1[32];            // x coordinates
+    uint32_t r2[32];            // y coordinates
+
     int pc;                  // Program Counter
 };
 
@@ -22,6 +25,18 @@ struct babyGPU {
 void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel) {
     gpu->pc = 0;
     int running = 1;
+
+    for (int lane = 0; lane < 32; lane++) {
+        int global_index = start_pixel + lane;
+
+        int x = global_index % WIDTH;
+        int scaled_x = (x * 255) / WIDTH;
+        gpu->r1[lane] = scaled_x; // we spread out our color along the pixels
+
+        gpu->r2[lane] = global_index / WIDTH;
+    
+        gpu->r0[lane] = 0;
+    }
 
     while(running) {
 
@@ -35,19 +50,37 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel) {
                 break;
                 
             case OP_MOV_LOW:
-                gpu->r0 = inst.value; 
+                // Broadcast the immediate value to all 32 threads
+                for (int lane = 0; lane < 32; lane++) {
+                    // Clear bottom 16 bits, then OR in the new value
+                    gpu->r0[lane] &= 0xFFFF0000; 
+                    gpu->r0[lane] |= inst.value;
+                }
                 break;
 
             case OP_MOV_HIGH:
-                gpu->r0 &= 0x0000FFFF; 
-                gpu->r0 |= (inst.value << 16);
+                for (int lane = 0; lane < 32; lane++) {
+                    // Clear top 16 bits, then OR in the new value
+                    gpu->r0[lane] &= 0x0000FFFF; 
+                    gpu->r0[lane] |= (inst.value << 16);
+                }
                 break;
 
             case OP_STORE_PIXEL:
-                for (int i = start_pixel; i < end_pixel; i++) {
-                    gpu->vram[i] = gpu->r0;
+                for (int lane = 0; lane < 32; lane++) {
+                    // The hardware knows where the thread belongs!
+                    int address = start_pixel + lane;
+                    
+                    if (address < MEM_SIZE) {
+                        gpu->vram[address] = gpu->r0[lane];
+                    }
                 }
                 break;
+            
+            case OP_ADD:
+                for (int lane = 0; lane < 32; lane++) {
+                    gpu->r0[lane] += gpu->r1[lane];
+                }
         }
         
         gpu->pc++;
@@ -60,24 +93,27 @@ int main() {
     gpu.vram = malloc(MEM_SIZE * sizeof(uint32_t));
     gpu.code_memory = malloc(PROG_SIZE * sizeof(struct Instruction));
 
-    if (!platform_init(WIDTH, HEIGHT, "Realistic Tiny GPU")) return -1;
+    if (!platform_init(WIDTH, HEIGHT, "BabyGPU")) return -1;
 
     
     // "Compile" our Shader (CPU creates instructions)
     // Color is R, G, B, A
     // LOW: 0xGGRR
     // HIGH: 0xFFBB
-
+    // We add r0 to r1 ; very basic way of creating a gradient
     struct Instruction shader[] = {
-        { OP_MOV_LOW,  0, 0xD2FA }, 
-        { OP_MOV_HIGH, 0, 0xFFB4 },
+        { OP_MOV_LOW,  0, 0x0000 }, 
+        { OP_MOV_HIGH, 0, 0xFF00 },
+        { OP_ADD, 0, 0 },
         { OP_STORE_PIXEL, 0, 0 }, 
         { OP_END, 0, 0 } 
     };
 
+    int prog_size = sizeof(shader) / sizeof(shader[0]);
+
     // "Upload" code to GPU (The Bus Transfer)
     // In reality, this is a PCIe copy
-    for (int i=0; i<3; i++) gpu.code_memory[i] = shader[i];
+    for (int i=0; i<prog_size; i++) gpu.code_memory[i] = shader[i];
 
     while(1) {
 
@@ -92,5 +128,7 @@ int main() {
     }
 
     platform_terminate();
+    free(gpu.vram);
+    free(gpu.code_memory);
     return 0;
 }
