@@ -40,7 +40,7 @@ void gpu_trap(struct babyGPU *gpu, enum TrapReason reason) {
     printf("Trap Reason: %d\n", reason);
     gpu->tripped = true;
     return;
-};
+}
 
 void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int prog_size) {
     gpu->pc = 0;
@@ -153,8 +153,8 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
             }
 
             case OP_DIV_REG: {
-                uint8_t dest_reg = inst.reg_dest;   //  Destination multiplied by the below
-                uint16_t src_reg = inst.value;      // Which register to multiply with
+                uint8_t dest_reg = inst.reg_dest;   //  Destination divided by the below
+                uint16_t src_reg = inst.value;      // Which register to divide by
 
                 for (int lane = 0; lane < 32; lane++) {
                     uint32_t divisor = gpu->registers[src_reg][lane];
@@ -171,16 +171,17 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
             }
 
             case OP_SLT_REG: { // set less than
-                uint8_t dest_reg = inst.reg_dest;   //  Destination multiplied by the below
-                uint16_t src_reg = inst.value;      // Which register to multiply with
+                uint8_t dest_reg = inst.reg_dest;   //  Destination set less than the below
+                uint16_t src_reg = inst.value;      // Which register to set less than
 
-                    for (int lane = 0; lane < 32; lane++) {
-                        if  (gpu->registers[dest_reg][lane] <  gpu->registers[src_reg][lane]){
-                            gpu->registers[dest_reg][lane] = 1; // True
-                        } else {
-                            gpu->registers[dest_reg][lane] = 0; // False
-                        }
+                for (int lane = 0; lane < 32; lane++) {
+                    if  (gpu->registers[dest_reg][lane] <  gpu->registers[src_reg][lane]){
+                        gpu->registers[dest_reg][lane] = 1; // True
+                    } else {
+                        gpu->registers[dest_reg][lane] = 0; // False
                     }
+                }
+                break;
             }
 
             case OP_STORE_PIXEL: {
@@ -209,7 +210,10 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
 int main() {
 
     // Initialize our fake monitor (the platform, GLFW)
-    if (!platform_init(WIDTH, HEIGHT, "BabyGPU")) return -1;
+    if (!platform_init(WIDTH, HEIGHT, "BabyGPU")){
+        printf("Failed to initialize platform\n");
+        return -1;
+    } 
 
     int prog_size;
     // Read the shader file (original parsing)
@@ -217,8 +221,11 @@ int main() {
     // Compile the shader (basically store instructions in numeric format to be passed on to the GPU)
     struct Instruction *shader = compile_shader(list, &prog_size);
 
+    free(list.data);
     if (shader == NULL) {
         printf("Shader compilation failed\n");
+        free(shader);
+        platform_terminate();
         return -1;
     }
 
@@ -231,7 +238,12 @@ int main() {
     // Check if the shader is too big for the GPU
     if (prog_size > PROG_SIZE) {
         gpu_trap(&gpu, TRAP_INSTRUCTION_MEMORY_OVERFLOW);
-        return;
+        free(list.data);
+        free(shader);
+        free(gpu.vram);
+        free(gpu.code_memory);
+        platform_terminate();
+        return -1;
     }
 
     // "Upload" code to GPU (The Bus Transfer)

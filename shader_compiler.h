@@ -25,30 +25,6 @@ typedef struct  {
 } RegEntry;
 
 
-// Use this to convert my opcodes to the enums
-static const OpcodeEntry kOpcodes[] = {
-    {"OP_MOV_LOW_IMM16",  OP_MOV_LOW_IMM16},
-    {"OP_MOV_HIGH_IMM16", OP_MOV_HIGH_IMM16},
-    {"OP_ADD_REG",        OP_ADD_REG},
-    {"OP_MULT_REG",       OP_MULT_REG},
-    {"OP_DIV_REG",        OP_DIV_REG},
-    {"OP_SLT_REG",        OP_SLT_REG},
-    {"OP_STORE_PIXEL",    OP_STORE_PIXEL},
-    {"OP_END",            OP_END},
-};
-// Use this to convert my registers to the enums
-static const RegEntry kRegs[] = {
-    {"R0_COLOR_OUT", R0_COLOR_OUT},
-    {"R1",           R1},
-    {"R2",           R2},
-    {"R3",           R3},
-    {"R4",           R4},
-    {"R5",           R5},
-    {"R6",           R6},
-    {"R7",           R7},
-    {"R8",           R8},
-};
-
 // Load a .shader file and parse each line into an InstructionText
 // Returns a list of InstructionText
 InstructionTextList read_shader_text(const char *filename);
