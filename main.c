@@ -6,7 +6,7 @@
 
 #include "platform.h"
 #include "isa.h"
-#include "shader_compiler.h"
+#include "shader_assembler.h"
 
 #define WIDTH 640
 #define HEIGHT 480
@@ -218,10 +218,10 @@ int main() {
     int prog_size;
     // Read the shader file (original parsing)
     InstructionTextList list = read_shader_text("test_shader.shader"); // need to add a way to fail gracefully
-    // Compile the shader (basically store instructions in numeric format to be passed on to the GPU)
-    struct Instruction *shader = compile_shader(list, &prog_size);
+    // Assemble the shader (basically store instructions in numeric format to be passed on to the GPU)
+    struct Instruction *shader = assemble_shader(list, &prog_size);
 
-    free(list.data);
+    
     if (shader == NULL) {
         printf("Shader compilation failed\n");
         free(shader);
@@ -238,13 +238,13 @@ int main() {
     // Check if the shader is too big for the GPU
     if (prog_size > PROG_SIZE) {
         gpu_trap(&gpu, TRAP_INSTRUCTION_MEMORY_OVERFLOW);
-        free(list.data);
         free(shader);
         free(gpu.vram);
         free(gpu.code_memory);
         platform_terminate();
         return -1;
     }
+
 
     // "Upload" code to GPU (The Bus Transfer)
     for (int i=0; i < prog_size; i++) gpu.code_memory[i] = shader[i];

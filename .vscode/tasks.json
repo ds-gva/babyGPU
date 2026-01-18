@@ -17,7 +17,7 @@
                 "${workspaceFolder}\\include",
                 "${workspaceFolder}\\main.c",
                 "${workspaceFolder}\\platform.c",
-                "${workspaceFolder}\\shader_compiler.c",
+                "${workspaceFolder}\\shader_assembler.c",
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
