@@ -1,7 +1,7 @@
 #ifndef SHADER_ASSEMBLER_H
 #define SHADER_ASSEMBLER_H
 #include <stdint.h>
-#include "isa.h"
+#include "../isa/isa.h"
 
 typedef struct {
     char opcode[64];

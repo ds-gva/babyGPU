@@ -15,9 +15,10 @@
                 "/Fd${workspaceFolder}\\bin\\",
                 "/I",
                 "${workspaceFolder}\\include",
-                "${workspaceFolder}\\main.c",
-                "${workspaceFolder}\\platform.c",
-                "${workspaceFolder}\\shader_assembler.c",
+                "${workspaceFolder}\\src\\main.c",
+                "${workspaceFolder}\\src\\gpu\\gpu.c",
+                "${workspaceFolder}\\src\\platform\\platform.c",
+                "${workspaceFolder}\\src\\driver\\shader_assembler.c",
             ],
             "options": {
                 "cwd": "${workspaceFolder}"
