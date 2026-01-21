@@ -18,12 +18,13 @@
 
 // Simulated GPU
 struct babyGPU {
-    uint32_t *vram;
-    struct Instruction *code_memory;
+    uint32_t *vram; // The VRAM
+    struct Instruction *code_memory; // The shader code
+    uint32_t constants[256]; // The constant buffer (uniforms)
 
-    uint32_t registers[NUM_REGS][32];
-    int pc;                  // Program Counter
-    bool tripped;
+    uint32_t registers[NUM_REGS][32]; // 9 registers, 32 lanes
+    int pc;   // Program Counter
+    bool tripped; // Whether the GPU has tripped
 };
 
 enum TrapReason {
@@ -32,7 +33,8 @@ enum TrapReason {
     TRAP_OPCODE_UNKNOWN = 2,
     TRAP_SRC_REGISTER_INVALID = 3,
     TRAP_DEST_REGISTER_INVALID = 4,
-    TRAP_INSTRUCTION_MEMORY_OVERFLOW = 5
+    TRAP_INSTRUCTION_MEMORY_OVERFLOW = 5,
+    TRAP_CONSTANT_BUFFER_OVERFLOW = 6
 };
 
 void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int prog_size);

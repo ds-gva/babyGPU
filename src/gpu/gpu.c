@@ -61,7 +61,7 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
         struct Instruction inst = gpu->code_memory[gpu->pc];
 
         // Check if opcode is valid before running it
-        if (inst.opcode > OP_END) {
+        if (inst.opcode > END) {
             gpu_trap(gpu, TRAP_OPCODE_UNKNOWN);
             printf("Opcode: %d\n", inst.opcode);
             running = 0;
@@ -69,8 +69,8 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
         }
 
         // Check if the destination register is valid before running it
-        if(inst.opcode != OP_STORE_PIXEL && inst.opcode != OP_END) {
-            if (inst.reg_dest >= NUM_REGS) {
+        if(inst.opcode != STORE_PIXEL && inst.opcode != END) {
+            if (inst.dst >= NUM_REGS) {
                 gpu_trap(gpu, TRAP_DEST_REGISTER_INVALID);
                 running = 0;
                 break;
@@ -78,8 +78,8 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
         }
 
         // Check if the source register is valid before running it
-        if (inst.opcode != OP_MOV_LOW_IMM16 && inst.opcode != OP_MOV_HIGH_IMM16 && inst.opcode != OP_STORE_PIXEL && inst.opcode != OP_END) {
-            if (inst.value >= NUM_REGS) {
+        if (inst.opcode != MOV_LOW_IMM8 && inst.opcode != MOV_HIGH_IMM8 && inst.opcode != STORE_PIXEL && inst.opcode != END) {
+            if (inst.src0 >= NUM_REGS) {
                 gpu_trap(gpu, TRAP_SRC_REGISTER_INVALID);
                 running = 0;
                 break;
@@ -88,80 +88,110 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
 
         // Decode and execute the instruction
         switch(inst.opcode) {                
-            case OP_MOV_LOW_IMM16:
+            case MOV_LOW_IMM8:
                 // Broadcast the immediate value to all 32 threads
                 for (int lane = 0; lane < 32; lane++) {
                     // Clear bottom 16 bits, then OR in the new value
-                    gpu->registers[inst.reg_dest][lane] &= 0xFFFF0000; 
-                    gpu->registers[inst.reg_dest][lane] |= inst.value;
+                    gpu->registers[inst.dst][lane] &= 0xFF00; 
+                    gpu->registers[inst.dst][lane] |= inst.src1_or_imm8;
                 }
                 break;
 
-            case OP_MOV_HIGH_IMM16: {
+            case MOV_HIGH_IMM8: {
                 for (int lane = 0; lane < 32; lane++) {
                     // Clear top 16 bits, then OR in the new value
-                    gpu->registers[inst.reg_dest][lane] &= 0x0000FFFF; 
-                    gpu->registers[inst.reg_dest][lane] |= (inst.value << 16);
+                    gpu->registers[inst.dst][lane] &= 0x00FF; 
+                    gpu->registers[inst.dst][lane] |= (inst.src1_or_imm8 << 8);
+                }
+                break;
+            }
+
+            case LDC: {
+                uint8_t idx = inst.src1_or_imm8; // The index of the constant to load
+                for (int lane = 0; lane < 32; lane++) {
+                    gpu->registers[inst.dst][lane] = gpu->constants[idx];
+                }
+                break;
+            }
+
+            case LDI: {
+                for (int lane = 0; lane < 32; lane++) {
+                    gpu->registers[inst.dst][lane] = inst.src1_or_imm8;
                 }
                 break;
             }
             
-            case OP_ADD_REG: {
+            case MOV: {
+                for (int lane = 0; lane < 32; lane++) {
+                    gpu->registers[inst.dst][lane] = 
+                        gpu->registers[inst.src0][lane];
+                }
+                break;
+            }
+
+            case ADD: {
                 // Decode Operands
-                uint8_t dest_reg = inst.reg_dest;   // Destination  (added to the below)
-                uint16_t src_reg = inst.value;      // Which register to add
-                
                 for (int lane = 0; lane < 32; lane++) {
-                    // GENERIC ADD: Reg[Dest] += Reg[Src]
-                    gpu->registers[dest_reg][lane] += gpu->registers[src_reg][lane];
+                    // dst = src0 + src1
+                    gpu->registers[inst.dst][lane] = 
+                        gpu->registers[inst.src0][lane] + gpu->registers[inst.src1_or_imm8][lane];
                 }
                 break;
             }
 
-            case OP_MULT_REG: {
-                uint8_t dest_reg = inst.reg_dest;   //  Destination multiplied by the below
-                uint16_t src_reg = inst.value;      // Which register to multiply with
-
+            case ADDI: {
                 for (int lane = 0; lane < 32; lane++) {
-                    // GENERIC MULT: Reg[Dest] *= Reg[Src]
-                    gpu->registers[dest_reg][lane] *= gpu->registers[src_reg][lane];
+                    gpu->registers[inst.dst][lane] += inst.src1_or_imm8; // Add the immediate value to the destination register
                 }
                 break;
             }
 
-            case OP_DIV_REG: {
-                uint8_t dest_reg = inst.reg_dest;   //  Destination divided by the below
-                uint16_t src_reg = inst.value;      // Which register to divide by
-
+            case MULT: {
                 for (int lane = 0; lane < 32; lane++) {
-                    uint32_t divisor = gpu->registers[src_reg][lane];
-                    
-                    // CRITICAL SAFETY CHECK
-                    if (divisor != 0) {
-                        gpu->registers[dest_reg][lane] /= divisor;
+                    // dst = src0 * src1
+                    gpu->registers[inst.dst][lane] = 
+                        gpu->registers[inst.src0][lane] * gpu->registers[inst.src1_or_imm8][lane];
+                }
+                break;
+            }
+
+            case MULTI: {
+                for (int lane = 0; lane < 32; lane++) {
+                    // dst = src0 * imm8
+                    gpu->registers[inst.dst][lane] = 
+                        gpu->registers[inst.src0][lane] * inst.src1_or_imm8;
+                }
+                break;
+            }
+
+            case DIV: {
+                for (int lane = 0; lane < 32; lane++) {
+                    // dst = src0 / src1
+                    if (gpu->registers[inst.src1_or_imm8][lane] != 0) {
+                        gpu->registers[inst.dst][lane] = 
+                            gpu->registers[inst.src0][lane] / gpu->registers[inst.src1_or_imm8][lane];
                     } else {
-                        // Handle divide by zero (usually keep value or set to MAX)
-                        gpu->registers[dest_reg][lane] = 0xFFFFFFFF; 
+                        gpu_trap(gpu, TRAP_DIVIDE_BY_ZERO);
+                        running = 0;
+                        break;
                     }
                 }
                 break;
             }
 
-            case OP_SLT_REG: { // set less than
-                uint8_t dest_reg = inst.reg_dest;   //  Destination set less than the below
-                uint16_t src_reg = inst.value;      // Which register to set less than
-
+            case SLT: {
                 for (int lane = 0; lane < 32; lane++) {
-                    if  (gpu->registers[dest_reg][lane] <  gpu->registers[src_reg][lane]){
-                        gpu->registers[dest_reg][lane] = 1; // True
+                    // dst = (src0 < src1) ? 1 : 0
+                    if (gpu->registers[inst.src0][lane] < gpu->registers[inst.src1_or_imm8][lane]) {
+                        gpu->registers[inst.dst][lane] = 1;
                     } else {
-                        gpu->registers[dest_reg][lane] = 0; // False
+                        gpu->registers[inst.dst][lane] = 0;
                     }
                 }
                 break;
             }
 
-            case OP_STORE_PIXEL: {
+            case STORE_PIXEL: {
                 for (int lane = 0; lane < 32; lane++) {
 
                     // The hardware knows where the thread belongs!
@@ -174,7 +204,7 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
                 break;
             }
 
-            case OP_END:
+            case END:
                 running = 0; 
                 break;
         }

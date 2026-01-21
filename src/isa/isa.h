@@ -17,25 +17,45 @@ enum RegAlias {
 
 // The Opcodes
 enum OpCode {
-    OP_MOV_LOW_IMM16 = 0,   // Load value into bottom 16 bits (preserves top)
-    OP_MOV_HIGH_IMM16 = 1,  // Load value into top 16 bits (preserves bottom)
-    OP_ADD_REG = 2, // Addition of two registers
-    OP_MULT_REG = 3, // Multiplication of two registers
-    OP_DIV_REG = 4, // Division of two registers
-    OP_SLT_REG = 5, // Set less than of two registers
-    OP_STORE_PIXEL = 6, // Store the value in the R0 register to the VRAM
-    OP_END =  7 // End instruction
+
+    // Load operations
+    MOV_LOW_IMM8 = 0,   // Load value into bottom 8 bits (preserves top) {mov_low_imm8, dst, imm8}
+    MOV_HIGH_IMM8 = 1,  // Load value into top 8 bits (preserves bottom) {mov_high_imm8, dst, imm8}
+    LDC = 2, // Load constant {ldc, dst, imm8}
+    LDI = 3, // Load immediate value {ldi, dst, imm8}
+
+    // Move operations
+    MOV = 4, // Move value from one register to another {mov, dst, src0}
+
+    // Arithmetic operations
+    ADD = 5, // Addition of two registers {add, dst, src0, src1}
+    ADDI = 6, // Addition of a register and an immediate value {addi, dst, src0, imm8}
+    MULT = 7, // Multiplication of two registers {mult, dst, src0, src1}
+    MULTI = 8, // Multiplication of a register and an immediate value {multi, dst, src0, imm8}
+    DIV = 9, // Division of two registers {div, dst, src0, src1}
+    DIVI = 10, // Division of a register and an immediate value {divi, dst, src0, imm8}
+
+    // Logic operations
+    SLT = 11, // Set less than of two registers {slt, dst, src0, src1}
+
+    // Store operations
+    STORE_PIXEL = 12, // Store the value in the R0 register to the VRAM {store_pixel}
+
+    // End operation
+    END =  13 // End instruction {end}
 };
 
 
 // A single instruction
 // opcode: The operation to perform
 // reg_dest: The destination register
-// value: Either a imm16 (immediate value) or a regster
+// src0: The first source register
+// src1_or_imm8: The second source register or immediate value
 struct Instruction {
-    uint8_t opcode; 
-    uint8_t reg_dest;
-    uint16_t value; // If opcodes terminate with IMM16 then value is the immediate value, if they terminate with REG then value is the source register
+    uint8_t opcode;
+    uint8_t dst;
+    uint8_t src0;
+    uint8_t src1_or_imm8;
 };
 
 #endif

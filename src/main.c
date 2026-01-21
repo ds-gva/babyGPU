@@ -20,37 +20,40 @@ int main() {
 
     int prog_size;
     // Read the shader file (original parsing)
-    InstructionTextList list = read_shader_text("test_shader.shader"); // need to add a way to fail gracefully
-    // Assemble the shader (basically store instructions in numeric format to be passed on to the GPU)
+    InstructionTextList list = read_shader_text("test_2.shader"); // need to add a way to fail gracefully
     struct Instruction *shader = assemble_shader(list, &prog_size);
-
-    
     if (shader == NULL) {
         printf("Shader compilation failed\n");
         platform_terminate();
         return -1;
     }
 
-    // Initialize our GPU
     struct babyGPU gpu;
-    
     gpu.tripped = false;
     gpu.vram = malloc(VRAM_SIZE * sizeof(uint32_t));
-    gpu.code_memory = malloc(PROG_SIZE * sizeof(struct Instruction));
 
     // Check if the shader is too big for the GPU
     if (prog_size > PROG_SIZE) {
         gpu_trap(&gpu, TRAP_INSTRUCTION_MEMORY_OVERFLOW);
         free(shader);
         free(gpu.vram);
-        free(gpu.code_memory);
         platform_terminate();
         return -1;
     }
 
+    gpu.code_memory = malloc(PROG_SIZE * sizeof(struct Instruction));
+    gpu.pc = 0;
 
-    // "Upload" code to GPU (The Bus Transfer)
-    for (int i=0; i < prog_size; i++) gpu.code_memory[i] = shader[i];
+    // "uniforms"
+    gpu.constants[0] = 0xFF0000FF; // square color
+    gpu.constants[1] = 270; // square x
+    gpu.constants[2] = 370; // square x
+    gpu.constants[3] = 190; // square y
+    gpu.constants[4] = 290; // square y
+
+    for (int i=0; i < prog_size; i++) gpu.code_memory[i] = shader[i]; // Copy the shader code to the GPU
+
+    free(shader);
 
     while(gpu.tripped == false) {
 
@@ -64,8 +67,8 @@ int main() {
         if (!platform_update(gpu.vram)) break;
     }
 
+
     platform_terminate();
-    free(gpu.vram);
-    free(gpu.code_memory);
     return 0;
+
 }

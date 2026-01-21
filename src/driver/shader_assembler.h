@@ -4,9 +4,9 @@
 #include "../isa/isa.h"
 
 typedef struct {
-    char opcode[64];
-    char reg_dest[64];
-    char value[64];
+    char tok[4][64];
+    int count;
+    int line_num;
 } InstructionText;
 
 typedef struct {
