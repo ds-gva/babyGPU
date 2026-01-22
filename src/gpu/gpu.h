@@ -38,5 +38,6 @@ enum TrapReason {
 };
 
 void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int prog_size);
+void gpu_trap(struct babyGPU *gpu, enum TrapReason reason);
 
 #endif
