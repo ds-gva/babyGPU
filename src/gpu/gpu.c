@@ -213,6 +213,11 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
                 break;
             }
 
+            case JMP: {
+                gpu->pc = inst.dst;  // Set PC to target
+                continue;            // Skip the pc++ at end of loop!
+            }
+
             case STORE_PIXEL: {
                 for (int lane = 0; lane < 32; lane++) {
 

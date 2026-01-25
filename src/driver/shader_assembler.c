@@ -23,6 +23,8 @@ static const OpcodeEntry kOpcodes[] = {
     {"DIVI",           DIVI},
 
     {"SLT",            SLT},
+    {"JMP",            JMP},
+
     {"STORE_PIXEL",    STORE_PIXEL},
     {"END",            END},
 
@@ -278,6 +280,16 @@ struct Instruction* assemble_shader(InstructionTextList list, int *prog_size) {
                 if (!parse_reg(t->tok[1], &inst->dst))           { printf("Error line %d: invalid dst\n",  t->line_num); free(shader); return NULL; }
                 if (!parse_reg(t->tok[2], &inst->src0))          { printf("Error line %d: invalid src0\n", t->line_num); free(shader); return NULL; }
                 if (!parse_imm8(t->tok[3], &inst->src1_or_imm8)) { printf("Error line %d: invalid imm\n",  t->line_num); free(shader); return NULL; }
+                break;
+            case JMP:
+                if (t->count != 2) {
+                    printf("Error line %d: JMP requires 1 operand (target)\n", t->line_num);
+                    free(shader); return NULL;
+                }
+                if (!parse_imm8(t->tok[1], &inst->dst)) {
+                    printf("Error line %d: invalid jump target '%s'\n", t->line_num, t->tok[1]);
+                    free(shader); return NULL;
+                }
                 break;
 
             default:

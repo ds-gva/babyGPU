@@ -26,15 +26,17 @@ int main() {
     }
 
     printf("GPU initialized\n");
-    int prog_id = gpu_load_program(dev, "test.shader");
+    int prog_id = gpu_load_program(dev, "checker.shader");
     printf("Program loaded\n");
     
     gpu_select_program(dev, prog_id);
-    gpu_set_constant(dev, 0, 0xFF0000FF); // square color
+    gpu_set_constant(dev, 0, 0xFF0000FF);  
+    gpu_set_constant(dev, 1, 0xFF00FF00);
+/*     gpu_set_constant(dev, 0, 0xFF0000FF); // square color
     gpu_set_constant(dev, 1, 270); // square x
     gpu_set_constant(dev, 2, 370); // square x
     gpu_set_constant(dev, 3, 190); // square y
-    gpu_set_constant(dev, 4, 290); // square y
+    gpu_set_constant(dev, 4, 290); // square y */
 
     bool running = true;
 

@@ -38,11 +38,14 @@ enum OpCode {
     // Logic operations
     SLT = 11, // Set less than of two registers {slt, dst, src0, src1}
 
+    // Branching operaitons
+    JMP = 12, // Unconditional jump {JMP, target} - to change: this will mean max of 256 instructions
+
     // Store operations
-    STORE_PIXEL = 12, // Store the value in the R0 register to the VRAM {store_pixel}
+    STORE_PIXEL = 13, // Store the value in the R0 register to the VRAM {store_pixel}
 
     // End operation
-    END =  13 // End instruction {end}
+    END =  14 // End instruction {end}
 };
 
 
