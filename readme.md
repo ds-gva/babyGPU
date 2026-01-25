@@ -33,12 +33,12 @@ At the moment babyGPU only has 10 registers (but the plan is to add support for 
 **MOV** - *Move value from one register to another* MOV, DST; SRC0
 
 ### Arithmetics
-ADD
-ADDI
-MULT
-MULTI
-DIV
-DIVI
+**ADD** - *Add 2 registers together and store in the destinaton one* - ADD, DST, SRC0, SRC1  
+**ADDI** - *Add the value of 1 register and an immediate (8-bit) and store into destination register* - ADDI, DST, SRC0, IMM8 
+**MULT** - *Multiply 2 registers together and store in the destinaton one* - MULT, DST, SRC0, SRC1
+**MULTI** - *Multioply the value of 1 register and an immediate (8-bit) and store into destination register* - MULTI, DST, SRC0, IMM8   
+**DIV** - *Divide 2 registers together and store in the destination one ; division by 0 not allowed* - DIV, DST, SRC0, SRC1    
+**DIVI** - *Divide the value of 1 register and an immediate (8-bit) and store into destination register ; division  by 0 not allowed* - DIVI, DST, SRC0, IMM8 
 
 ### Logic
 SLT
@@ -52,11 +52,53 @@ STORE_PIXEL
 ### End
 END
 
+## babyASM language
+You can write shaders for babyGPU (only fragment shaders right now!) using the isa described above.
+Syntax is simply an opcode followed by the register references. Anything after a semi-colon is ignored by the assembler:
+```
+OPCODE, DST, SRC0, SRC1_OR_IMM8 ;this is a comment
+```
+
+You can call constants ("uniforms") in your main program like-so:
+```C
+gpu_set_constant(dev, 0, 0xFF0000FF); //set constant 0 as red
+```
+And then use them in your assembly code:
+```
+LDC, R3, 0 ;load constant 0 into registry R3
+```
+
+A valid babyASM program writes the computed pixels to R0 and calls STORE_PIXEL and ends:
+```
+MOV, R0_COLOR_OUT, R3
+STORE_PIXEL
+END
+```
+
+Here is an example of a full shader program: 
+
+```asm
+LDC, R7, 0              ;load color from constant 0
+MOV, R0_COLOR_OUT, R7   ;move our color to R0
+STORE_PIXEL             ;store pixels from R0
+END
+```
+
+I am slowly adding some additional features to the language (and will make it turing complete); but effectively you can also do unconditional jumps and use labels:
+```
+    LDC, R0_COLOR_OUT, 0      ; Load red from constant[0] (assume its set to red)
+    JMP, skip_green           ; Jump over the green color
+    LDC, R0_COLOR_OUT, 1      ; Load green from constant[1] (assume its set to green)- SHOULD BE SKIPPED 
+skip_green:
+    STORE_PIXEL
+    END
+```
+
 ## Sample programs
 1. Flicker shader
 2. Red Square
 3. Horizontal color-split
-4. Green gradient
+4. Green gradient  
 (more to come...)
 
 ## How to build

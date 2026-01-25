@@ -11,9 +11,8 @@ DIV, R6, R6, R5  ; R6 Divided by width (R5)
 
 MULT, R7, R6, R3     ; R7 = NormalizedGreen (R6) * 256          
 
-; 4. Combine them
+;Combine the colors into the R0_COLOR_OUT
 ADD, R0_COLOR_OUT, R4, R7 ; Result: Alpha | Green
 
 STORE_PIXEL
-
 END
