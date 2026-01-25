@@ -7,7 +7,7 @@
 
 #define MAX_TOKS 4;
 
-// Use this to convert opcodes to their enum values
+// convert opcodes to their enum values
 static const OpcodeEntry kOpcodes[] = {
     {"MOV_LOW_IMM8",  MOV_LOW_IMM8},
     {"MOV_HIGH_IMM8", MOV_HIGH_IMM8},
@@ -29,7 +29,8 @@ static const OpcodeEntry kOpcodes[] = {
     {"END",            END},
 
 };
-// Use this to convert registers to their enum values
+
+//convert registers to their enum values
 static const RegEntry kRegs[] = {
     {"R0_COLOR_OUT", R0_COLOR_OUT},
     {"R1",           R1},
@@ -42,6 +43,59 @@ static const RegEntry kRegs[] = {
     {"R8",           R8},
 };
 
+#define MAX_LABELS 64
+
+typedef struct {
+    char name[64];
+    int pc;  // Instruction index this label points to
+} Label;
+
+static Label labels[MAX_LABELS];
+static int label_count = 0;
+
+static int is_label_def(const char *s) {
+    // A label definition ends with ':'
+    size_t len = strlen(s);
+    if (len < 2) return 0;
+    if (s[len - 1] != ':') return 0;
+    // Check that it's a valid identifier (not just ":")
+    for (size_t i = 0; i < len - 1; i++) {
+        char c = s[i];
+        if (!isalnum((unsigned char)c) && c != '_') return 0;
+        if (i == 0 && isdigit((unsigned char)c)) return 0;  // Can't start with digit
+    }
+    return 1;
+}
+
+static int find_label(const char *name, int *out_pc) {
+    for (int i = 0; i < label_count; i++) {
+        if (strcmp(labels[i].name, name) == 0) {
+            *out_pc = labels[i].pc;
+            return 1;
+        }
+    }
+    return 0;
+}
+
+static int add_label(const char *name, int pc, int line_num) {
+    if (label_count >= MAX_LABELS) {
+        printf("Error line %d: too many labels\n", line_num);
+        return 0;
+    }
+    
+    // Check for duplicate
+    int dummy;
+    if (find_label(name, &dummy)) {
+        printf("Error line %d: duplicate label '%s'\n", line_num, name);
+        return 0;
+    }
+    
+    strncpy(labels[label_count].name, name, 63);
+    labels[label_count].name[63] = '\0';
+    labels[label_count].pc = pc;
+    label_count++;
+    return 1;
+}
 
 static char* trim(char *s) {
     if (!s) return s;
@@ -115,6 +169,23 @@ static int copy_token(char dst[64], char *tok) {
     return 1;
 }
 
+static int parse_jump_target(const char *s, uint8_t *out, int line_num) {
+    // First, try to resolve as a label
+    int pc;
+    if (find_label(s, &pc)) {
+        if (pc > 255) {
+            printf("Error line %d: label '%s' target %d exceeds 8-bit range\n", 
+                   line_num, s, pc);
+            return 0;
+        }
+        *out = (uint8_t)pc;
+        return 1;
+    }
+    
+    // Fall back to numeric immediate
+    return parse_imm8(s, out);
+}
+
 InstructionTextList read_shader_text(const char *filename) {
     InstructionTextList out = {0};
     FILE *fp = fopen(filename, "r");
@@ -123,6 +194,7 @@ InstructionTextList read_shader_text(const char *filename) {
     size_t cap = 0;
     char line[1024];
     int linecount = 0;
+    int instruction_index = 0;
 
     while (fgets(line, sizeof line, fp)) {
         linecount++;
@@ -133,6 +205,26 @@ InstructionTextList read_shader_text(const char *filename) {
 
         // Skip blank lines
         if (is_blank_line(line)) continue;
+
+        char *trimmed = trim(line);
+
+            if (is_label_def(trimmed)) {
+            // Extract label name (everything except the trailing ':')
+            char label_name[64];
+            size_t len = strlen(trimmed);
+            strncpy(label_name, trimmed, len - 1);
+            label_name[len - 1] = '\0';
+            
+            // Record label pointing to NEXT instruction
+            if (!add_label(label_name, instruction_index, linecount)) {
+                free(out.data);
+                out.data = NULL;
+                out.len = 0;
+                fclose(fp);
+                return out;
+            }
+            continue;  // Don't add label as an instruction
+        }
 
         // Grow buffer if needed
         if (out.len == cap) {
@@ -166,6 +258,7 @@ InstructionTextList read_shader_text(const char *filename) {
         }
 
         out.len++;
+        instruction_index++;
     }
 
     fclose(fp);
@@ -222,7 +315,6 @@ struct Instruction* assemble_shader(InstructionTextList list, int *prog_size) {
             case MOV_LOW_IMM8:
             case MOV_HIGH_IMM8:
             case LDC:
-                // dst, imm8
                 if (t->count != 3) {
                     printf("Error line %d: %s requires 2 operands (dst, imm)\n", t->line_num, t->tok[0]);
                     free(shader); return NULL;
@@ -238,7 +330,6 @@ struct Instruction* assemble_shader(InstructionTextList list, int *prog_size) {
 
                 break;
             case LDI:
-                // dst, imm8
                 if (t->count != 3) {
                     printf("Error line %d: %s requires 2 operands (dst, imm)\n", t->line_num, t->tok[0]);
                     free(shader); return NULL;
@@ -259,7 +350,6 @@ struct Instruction* assemble_shader(InstructionTextList list, int *prog_size) {
             case MULT:
             case DIV:
             case SLT:
-                // dst, src0, src1 (all regs)
                 if (t->count != 4) {
                     printf("Error line %d: %s requires 3 operands (dst, src0, src1)\n", t->line_num, t->tok[0]);
                     free(shader); return NULL;
@@ -272,7 +362,6 @@ struct Instruction* assemble_shader(InstructionTextList list, int *prog_size) {
             case ADDI:
             case MULTI:
             case DIVI:
-                // dst, src0, imm8
                 if (t->count != 4) {
                     printf("Error line %d: %s requires 3 operands (dst, src0, imm)\n", t->line_num, t->tok[0]);
                     free(shader); return NULL;
@@ -286,7 +375,7 @@ struct Instruction* assemble_shader(InstructionTextList list, int *prog_size) {
                     printf("Error line %d: JMP requires 1 operand (target)\n", t->line_num);
                     free(shader); return NULL;
                 }
-                if (!parse_imm8(t->tok[1], &inst->dst)) {
+                if (!parse_jump_target(t->tok[1], &inst->dst, t->line_num)) {
                     printf("Error line %d: invalid jump target '%s'\n", t->line_num, t->tok[1]);
                     free(shader); return NULL;
                 }
