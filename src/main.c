@@ -60,13 +60,15 @@ void draw_main_menu(int selected, const char *message) {
     printf("  \033[38;5;39m┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐\033[0m\n");
     printf("  \033[38;5;39m│\033[0m  \033[38;5;255m[\033[38;5;213m1\033[38;5;255m]\033[0m  Run a red-green flicker shader                                                                   \033[38;5;39m│\033[0m\n");
     printf("  \033[38;5;39m│\033[0m  \033[38;5;255m[\033[38;5;213m2\033[38;5;255m]\033[0m  Display a red square                                                                             \033[38;5;39m│\033[0m\n");
-    printf("  \033[38;5;39m│\033[0m  \033[38;5;255m[\033[38;5;213m3\033[38;5;255m]\033[0m  Quit                                                                                             \033[38;5;39m│\033[0m\n");
+    printf("  \033[38;5;39m│\033[0m  \033[38;5;255m[\033[38;5;213m3\033[38;5;255m]\033[0m  Split-color horizontal                                                                           \033[38;5;39m│\033[0m\n");
+    printf("  \033[38;5;39m│\033[0m  \033[38;5;255m[\033[38;5;213m4\033[38;5;255m]\033[0m  Baby Gradient                                                                                    \033[38;5;39m│\033[0m\n");
+    printf("  \033[38;5;39m│\033[0m  \033[38;5;255m[\033[38;5;213m5\033[38;5;255m]\033[0m  Quit                                                                                             \033[38;5;39m│\033[0m\n");
     printf("  \033[38;5;39m└────────────────────────────────────────────────────────────────────────────────────────────────────────┘\033[0m\n");
 
     if (message) {
         printf("  " RED "⚠  %s" RESET "\n", message);
     }
-    printf("\n  \033[38;5;250m❯\033[0m \033[38;5;48mEnter choice (1-3):\033[0m ");
+    printf("\n  \033[38;5;250m❯\033[0m \033[38;5;48mEnter choice (1-5):\033[0m ");
     fflush(stdout);
 }
 
@@ -99,12 +101,22 @@ int main() {
                 menu_running = 0;
                 break;
             case 3:
+                printf(CLEAR_SCREEN);
+                printf("\nLaunching split horizontal application...\n");
+                menu_running = 0;
+                break;
+            case 4:
+                printf(CLEAR_SCREEN);
+                printf("\nLaunching baby gradient application...\n");
+                menu_running = 0;
+                break;
+            case 5:
                 printf("\nExiting babyGPU\n");
                 menu_running = 0;
                 return 0;
                 break;
             default:
-                error = "Invalid choice (1-2 only)";
+                error = "Invalid choice (1-5 only)";
         }
 
     }
@@ -128,7 +140,7 @@ int main() {
 
     // Flicker shader
     if(choice == 1) {
-        int prog_id = gpu_load_program(dev, "flicker.shader");
+        int prog_id = gpu_load_program(dev, "sample_shaders/flicker.shader");
         printf("Loaded program: flicker.shader\n");
         gpu_select_program(dev, prog_id);
         gpu_set_constant(dev, 0, 0xFF0000FF);  // iniate a color
@@ -136,7 +148,7 @@ int main() {
 
     // Square shader
     if (choice == 2) {
-        int prog_id = gpu_load_program(dev, "square.shader");
+        int prog_id = gpu_load_program(dev, "sample_shaders/square.shader");
         printf("Loaded program: square.shader\n");
         gpu_select_program(dev, prog_id);
         gpu_set_constant(dev, 0, 0xFF0000FF); // square color
@@ -146,6 +158,22 @@ int main() {
         gpu_set_constant(dev, 4, 290); // square y */     
     }
 
+    if (choice == 3) { 
+        int prog_id = gpu_load_program(dev, "sample_shaders/split_horizontal.shader");
+        printf("Loaded program: split_horizontal.shader\n");
+        gpu_select_program(dev, prog_id);
+        gpu_set_constant(dev, 0, 240); // split location (480/2)
+        gpu_set_constant(dev, 1, 0xFF0000FF); // color 1
+        gpu_set_constant(dev, 2, 0xFFFF0000); // color 2 
+    }
+    if (choice == 4) { 
+        int prog_id = gpu_load_program(dev, "sample_shaders/baby_gradient.shader");
+        printf("Loaded program: baby_gradient.shader\n");
+        gpu_select_program(dev, prog_id);
+        gpu_set_constant(dev, 0, 256); // shift to green
+        gpu_set_constant(dev, 1, 0xFF000000); // full alpha
+        gpu_set_constant(dev, 2, 640); // screen width
+    }
     bool running = true;
 
     int color_swap = 1; // only if program 1 is selected

@@ -1,5 +1,5 @@
 @echo off
-REM Simple build and launch script - same as your old tasks.json
+REM
 
 REM Find and run vcvarsall.bat to set up cl.exe
 where cl >nul 2>nul
