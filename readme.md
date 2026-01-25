@@ -14,7 +14,7 @@ Runs only on windows. Have not spent any time on the build side of things. All d
 - Actual display is abstracted to a GLFW + OpengGL 1.1 texture on which we paint our pixel buffer (for simplicity)
 - Basic assembler for "assembly-like" shaders, reading from external files (comment stripping, tokenization, error messages)
 
-## Register
+## Registers
 At the moment babyGPU only has 10 registers (but the plan is to add support for more flexible number of registers going forward)
 - **R0_COLOR_OUT**: this is a special register where the screen buffer is read (i.e., colors per pixel)
 - **R1**: this is initalized with scaled x coordinates (640x480 fixed res)
@@ -34,8 +34,8 @@ At the moment babyGPU only has 10 registers (but the plan is to add support for 
 
 ### Arithmetics
 **ADD** - *Add 2 registers together and store in the destinaton one* - ADD, DST, SRC0, SRC1  
-**ADDI** - *Add the value of 1 register and an immediate (8-bit) and store into destination register* - ADDI, DST, SRC0, IMM8 
-**MULT** - *Multiply 2 registers together and store in the destinaton one* - MULT, DST, SRC0, SRC1
+**ADDI** - *Add the value of 1 register and an immediate (8-bit) and store into destination register* - ADDI, DST, SRC0, IMM8  
+**MULT** - *Multiply 2 registers together and store in the destinaton one* - MULT, DST, SRC0, SRC1  
 **MULTI** - *Multioply the value of 1 register and an immediate (8-bit) and store into destination register* - MULTI, DST, SRC0, IMM8   
 **DIV** - *Divide 2 registers together and store in the destination one ; division by 0 not allowed* - DIV, DST, SRC0, SRC1    
 **DIVI** - *Divide the value of 1 register and an immediate (8-bit) and store into destination register ; division  by 0 not allowed* - DIVI, DST, SRC0, IMM8 
@@ -55,7 +55,7 @@ END
 ## babyASM language
 You can write shaders for babyGPU (only fragment shaders right now!) using the isa described above.
 Syntax is simply an opcode followed by the register references. Anything after a semi-colon is ignored by the assembler:
-```
+```asm
 OPCODE, DST, SRC0, SRC1_OR_IMM8 ;this is a comment
 ```
 
@@ -64,12 +64,12 @@ You can call constants ("uniforms") in your main program like-so:
 gpu_set_constant(dev, 0, 0xFF0000FF); //set constant 0 as red
 ```
 And then use them in your assembly code:
-```
+```asm
 LDC, R3, 0 ;load constant 0 into registry R3
 ```
 
 A valid babyASM program writes the computed pixels to R0 and calls STORE_PIXEL and ends:
-```
+```asm
 MOV, R0_COLOR_OUT, R3
 STORE_PIXEL
 END
@@ -85,7 +85,7 @@ END
 ```
 
 I am slowly adding some additional features to the language (and will make it turing complete); but effectively you can also do unconditional jumps and use labels:
-```
+```asm
     LDC, R0_COLOR_OUT, 0      ; Load red from constant[0] (assume its set to red)
     JMP, skip_green           ; Jump over the green color
     LDC, R0_COLOR_OUT, 1      ; Load green from constant[1] (assume its set to green)- SHOULD BE SKIPPED 
