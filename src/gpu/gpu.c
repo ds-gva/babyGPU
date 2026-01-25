@@ -86,6 +86,14 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
             }
         }
 
+        if (inst.opcode == 'ADD' || inst.opcode == 'MULT' || inst.opcode == 'DIV' || inst.opcode == 'SLT') {
+            if (inst.src1_or_imm8 >= NUM_REGS) {
+                gpu_trap(gpu, TRAP_SRC_REGISTER_INVALID);
+                running = 0;
+                break;
+            }
+        }
+
         // Decode and execute the instruction
         switch(inst.opcode) {                
             case MOV_LOW_IMM8:
@@ -141,7 +149,8 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
 
             case ADDI: {
                 for (int lane = 0; lane < 32; lane++) {
-                    gpu->registers[inst.dst][lane] += inst.src1_or_imm8; // Add the immediate value to the destination register
+                    gpu->registers[inst.dst][lane] = 
+                        gpu->registers[inst.src0][lane] + inst.src1_or_imm8; // Add the immediate value to the destination register
                 }
                 break;
             }
@@ -178,6 +187,19 @@ void gpu_execute_warp(struct babyGPU *gpu, int start_pixel, int end_pixel, int p
                 }
                 break;
             }
+
+            case DIVI: {
+                if (inst.src1_or_imm8 == 0) { 
+                        gpu_trap(gpu, TRAP_DIVIDE_BY_ZERO);
+                        running = 0;
+                        break;
+                    }
+                for (int lane = 0; lane < 32; lane++) {
+                    gpu->registers[inst.dst][lane] = 
+                        gpu->registers[inst.src0][lane] / inst.src1_or_imm8;
+                }
+                break;
+}
 
             case SLT: {
                 for (int lane = 0; lane < 32; lane++) {

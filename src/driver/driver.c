@@ -80,6 +80,7 @@ int gpu_load_program(GPU_Device* dev, const char* filename) {
     InstructionTextList list = read_shader_text(filename); // need to add a way to fail gracefully
     int prog_size = 0;
     struct Instruction *code = assemble_shader(list, &prog_size);
+    free(list.data);
 
     if (code == NULL) {
         printf("Shader compilation failed\n");
