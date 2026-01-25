@@ -15,7 +15,7 @@ Right now, I'm trying to have a basic simulation of SIMT execution, 32 thread wa
 ## ISA Operations
 
 ### Load
-**MOV_LOW_IMM8** - *Load value into bottom 8 bits (preserve top)* - MOV_LOW_IMM8, DST, IMM8 
+**MOV_LOW_IMM8** - *Load value into bottom 8 bits (preserve top)* - MOV_LOW_IMM8, DST, IMM8
 **MOV_HIGH_IMM8** - *Load value into top 8 bits (preserves bottom)* - MOV_HIGH_IMM8, DST, IMM8
 **LDC** - *Load constant into destination register, constant is defined in application* - LDC, DST, IMM8
 **LDI** - *Load immediate value into destination* - LDI, DST, IMM8
@@ -48,4 +48,5 @@ END
 - Add JNZ
 - Add masking for conditional execution across threads
 - Consider floats
+
 
